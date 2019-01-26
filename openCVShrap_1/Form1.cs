@@ -15,6 +15,7 @@ using System.IO;
 using System.Net.Http.Headers;
 using System.Net.Http;
 using Newtonsoft.Json.Linq;
+using System.Runtime.Serialization;
 
 namespace openCVShrap_1
 {
@@ -23,6 +24,8 @@ namespace openCVShrap_1
 
         bool isCanceled = false;
         string retStr = "";
+        UIForm uiForm = new UIForm();
+        static EmotionDTO LocalEmotionDTO { get; set; }
 
         public Form1()
         {
@@ -102,10 +105,37 @@ namespace openCVShrap_1
             foreach (var score in scoreList)
             {
                 Console.WriteLine(score);
+
+                LocalEmotionDTO = Deserialize(score);
                 retStr += score;
             }
 
             return retStr;
+        }
+
+        /// <summary>
+        /// EmotionAPIの取得結果のJSONをEmotionDTOへ変換する
+        /// </summary>
+        /// <param name="resultJson"></param>
+        /// <returns></returns>
+        static EmotionDTO Deserialize(JToken resultJson)
+        {
+            JEnumerable<JToken> emotionObj = resultJson.First.Children();
+            
+            // 本当はDataContractJsonSerializerのように、マッピングしたいのだが・・・。
+            // 実現する方法がわからなかったので、決め打ちなことを利用してElementAt()で各要素を取得しEmotionDTOに設定
+            EmotionDTO emotionDTO = new EmotionDTO(
+                (float)emotionObj.ElementAt(0),
+                (float)emotionObj.ElementAt(1),
+                (float)emotionObj.ElementAt(2),
+                (float)emotionObj.ElementAt(3),
+                (float)emotionObj.ElementAt(4),
+                (float)emotionObj.ElementAt(5),
+                (float)emotionObj.ElementAt(6),
+                (float)emotionObj.ElementAt(7)
+                );
+
+            return emotionDTO;
         }
 
         delegate void setResultDelegate();
@@ -200,6 +230,9 @@ namespace openCVShrap_1
                                  // 非同期でテキストボックスに結果を表示する
                                  Invoke(new setResultDelegate(setResult));
 
+                                 // UI画面に渡す
+                                 this.uiForm.UpdateBarometer(LocalEmotionDTO);
+
                                  // アプリ実行場所のフォルダ名取得
                                  string currentDir = System.Environment.CurrentDirectory;
 
@@ -256,7 +289,11 @@ namespace openCVShrap_1
             // stopボタンは有効化
             this.button2.Enabled = true;
 
+            // キャプチャ開始
             CaptureCamera();
+
+            // 結果表示用画面追加
+            uiForm.Show(this);
 
         }
 
@@ -268,6 +305,9 @@ namespace openCVShrap_1
             this.button1.Enabled = true;
             // stopボタンは無効化
             this.button2.Enabled = false;
+
+            // 結果表示画面削除
+            uiForm.Hide();
         }
     }
 }
