@@ -67,6 +67,8 @@ namespace openCVShrap_1
                                 "ok_fl"
                                 };
 
+        private string ExcelExt = ".xlsx";
+
 
         public Form1()
         {
@@ -75,7 +77,12 @@ namespace openCVShrap_1
             System.Reflection.Assembly myAssembly =
                 System.Reflection.Assembly.GetExecutingAssembly();
 
+            // 顔アイコンをデフォルト(寝顔)
             this.pictureBox2.Image = openCVShrap_1.Properties.Resources.computer11_sleep;
+
+            // OK、NGボタンをグレー表示
+            this.button3.BackColor = Color.Gray;
+            this.button4.BackColor = Color.Gray;
 
 
 
@@ -193,7 +200,7 @@ namespace openCVShrap_1
             // 本当はDataContractJsonSerializerのように、マッピングしたいのだが・・・。
             // 実現する方法がわからなかったので、決め打ちなことを利用してElementAt()で各要素を取得しEmotionDTOに設定
             EmotionDTO emotionDTO = new EmotionDTO(
-                id,                                 // Excel出力時のID
+                0,                                 // Excel出力時のID(書き込む直前にインクリメントさせる)
                 string.Empty,                       // 撮影日時
                 string.Empty,                       // 表情認識完了、画像加工完了までの経過時間(ミリ秒)
                 (float)emotionObj.ElementAt(0),     // EmotionAPIのanger
@@ -317,7 +324,7 @@ namespace openCVShrap_1
                              {
                                  // 画像とパラメータを紐づけられるようにしてデータ化することで、各個人の「話しかけて良い表情」と「話しかけないほうがよい表情」を作成する
                                  // ①まず画像を保存
-                                 string imageFile = nowTime + @"\" + frameNumber.ToString() + ".jpg";
+                                 string imageFile = System.Environment.CurrentDirectory + @"\" + nowTime + @"\" + frameNumber.ToString() + ".jpg";
                                  Cv2.ImWrite(imageFile, image);
 
                                  // ②パラメータを準備する
@@ -344,7 +351,8 @@ namespace openCVShrap_1
                  finally
                  {
                      // 羽田さん岩見さんアルゴリズムの撮影結果をExcelに出力する
-                     OutToExcel(nowTime, emotionDtoList);
+                     string excelFileName = System.Environment.CurrentDirectory + @"\" + nowTime + @"\" + "log_" + nowTime + ExcelExt;
+                     OutToExcel(excelFileName, emotionDtoList);
 
                      videoCapture.Release();
                  }
@@ -374,9 +382,11 @@ namespace openCVShrap_1
 
             // OKボタン有効化
             this.button3.Enabled = true;
+            this.button3.BackColor = Color.Aqua;
 
             // NGボタン有効化
             this.button4.Enabled = true;
+            this.button4.BackColor = Color.Red;
 
             CaptureCamera();
 
@@ -411,6 +421,15 @@ namespace openCVShrap_1
             this.button4.Enabled = true;
             // 色も変える
             this.button4.BackColor = Color.Red;
+
+            // 顔アイコンを笑顔
+            if (this.pictureBox2.Image != null)
+            {
+                this.pictureBox2.Image.Dispose();
+                this.pictureBox2.Image = null;
+            }
+
+            this.pictureBox2.Image = openCVShrap_1.Properties.Resources.computer01_smile;
         }
 
         private void button4_Click(object sender, EventArgs e)
@@ -424,7 +443,17 @@ namespace openCVShrap_1
             this.button4.BackColor = Color.Gray;
 
             this.button3.Enabled = true;
-            this.button3.BackColor = Color.Blue;
+            // 色も変える
+            this.button3.BackColor = Color.Aqua;
+
+
+            // 顔アイコンを怒り
+            if (this.pictureBox2.Image != null)
+            {
+                this.pictureBox2.Image.Dispose();
+                this.pictureBox2.Image = null;
+            }
+            this.pictureBox2.Image = openCVShrap_1.Properties.Resources.computer02_angry;
         }
 
 
@@ -441,7 +470,7 @@ namespace openCVShrap_1
             ws1.Select(Type.Missing);
             try
             {
-                // ■TODO：ここで引数のデータをExcelに書き込む
+                // ■ここで引数のデータをExcelに書き込む
 
                 // まずは1行目にカラム名に相当する文字列を出力
                 int columnIndex = 1;
@@ -463,15 +492,32 @@ namespace openCVShrap_1
 
 
                 // ファイル保存
+                
                 wb.SaveAs(outputFileName);
                 wb.Close(false);
                 ExcelApp.Quit();
+
+                // OK、NGボタンを元に戻す
+                this.button3.Enabled = false;
+                this.button3.BackColor = Color.Gray;
+                this.button4.Enabled = false;
+                this.button4.BackColor = Color.Gray;
+
+                // 表情アイコンをデフォルトに戻す
+                this.pictureBox2.Image = openCVShrap_1.Properties.Resources.computer11_sleep;
+
+
+                // 完了ダイアログ表示
+                MessageBox.Show("感情算出結果をExcelに保存しました");
             }
             finally
             {
                 Marshal.ReleaseComObject(ws1);
+                ws1 = null;
                 Marshal.ReleaseComObject(wb);
+                wb = null;
                 Marshal.ReleaseComObject(ExcelApp);
+                ExcelApp = null;
             }
         }
 
@@ -483,82 +529,121 @@ namespace openCVShrap_1
         /// <param name="rowIndex"></param>
         private void UpdateWorkSheetRow(EmotionDTO emotion, Worksheet ws1, int rowIndex)
         {
+
             // ID
-            Microsoft.Office.Interop.Excel.Range rangeData_ID = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "out_id")];
+            Microsoft.Office.Interop.Excel.Range rangeData_ID = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "out_id") + 1];
             rangeData_ID.Value2 = emotion.Id;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_ID);
 
             // startTime
-            Microsoft.Office.Interop.Excel.Range rangeData_StartTime = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "time")];
+            Microsoft.Office.Interop.Excel.Range rangeData_StartTime = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "time") + 1];
             rangeData_StartTime.Value2 = emotion.StartTime;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_StartTime);
 
             // elapsedTime
-            Microsoft.Office.Interop.Excel.Range rangeData_ElapsedTime = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "elapsed")];
+            Microsoft.Office.Interop.Excel.Range rangeData_ElapsedTime = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "elapsed") + 1];
             rangeData_ElapsedTime.Value2 = emotion.ElapsedTime;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_ElapsedTime);
 
             // Anger
-            Microsoft.Office.Interop.Excel.Range rangeData_Anger = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "anger")];
-            rangeData_ElapsedTime.Value2 = emotion.Anger;
+            Microsoft.Office.Interop.Excel.Range rangeData_Anger = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "anger") + 1];
+            rangeData_Anger.Value2 = emotion.Anger;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Anger);
 
             // contempt
-            Microsoft.Office.Interop.Excel.Range rangeData_Contempt = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "comtempt")];
-            rangeData_ElapsedTime.Value2 = emotion.Contempt;
+            Microsoft.Office.Interop.Excel.Range rangeData_Contempt = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "contempt") + 1];
+            rangeData_Contempt.Value2 = emotion.Contempt;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Contempt);
 
             // disgust
-            Microsoft.Office.Interop.Excel.Range rangeData_Disgust = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "disgust")];
-            rangeData_ElapsedTime.Value2 = emotion.Disgust;
+            Microsoft.Office.Interop.Excel.Range rangeData_Disgust = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "disgust") + 1];
+            rangeData_Disgust.Value2 = emotion.Disgust;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Disgust);
 
             // fear
-            Microsoft.Office.Interop.Excel.Range rangeData_fear = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "fear")];
-            rangeData_ElapsedTime.Value2 = emotion.Fear;
+            Microsoft.Office.Interop.Excel.Range rangeData_fear = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "fear") + 1];
+            rangeData_fear.Value2 = emotion.Fear;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_fear);
 
             // happiness
-            Microsoft.Office.Interop.Excel.Range rangeData_Happiness = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "happiness")];
-            rangeData_ElapsedTime.Value2 = emotion.Happiness;
+            Microsoft.Office.Interop.Excel.Range rangeData_Happiness = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "happiness") + 1];
+            rangeData_Happiness.Value2 = emotion.Happiness;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Happiness);
 
             // neutral
-            Microsoft.Office.Interop.Excel.Range rangeData_Neutral = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "neutral")];
-            rangeData_ElapsedTime.Value2 = emotion.Neutral;
+            Microsoft.Office.Interop.Excel.Range rangeData_Neutral = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "neutral") + 1];
+            rangeData_Neutral.Value2 = emotion.Neutral;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Neutral);
 
 
             // sadness
-            Microsoft.Office.Interop.Excel.Range rangeData_Sadness = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "sadness")];
-            rangeData_ElapsedTime.Value2 = emotion.Sadness;
+            Microsoft.Office.Interop.Excel.Range rangeData_Sadness = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "sadness") + 1];
+            rangeData_Sadness.Value2 = emotion.Sadness;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Sadness);
 
             // surprize
-            Microsoft.Office.Interop.Excel.Range rangeData_Surprise = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "surprise")];
-            rangeData_ElapsedTime.Value2 = emotion.Surprise;
+            Microsoft.Office.Interop.Excel.Range rangeData_Surprise = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "surprise") + 1];
+            rangeData_Surprise.Value2 = emotion.Surprise;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Surprise);
 
             // danger
-            Microsoft.Office.Interop.Excel.Range rangeData_Danger = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "danger")];
-            rangeData_ElapsedTime.Value2 = emotion.Danger;
+            Microsoft.Office.Interop.Excel.Range rangeData_Danger = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "danger") + 1];
+            rangeData_Danger.Value2 = emotion.Danger;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Danger);
 
             // left
-            Microsoft.Office.Interop.Excel.Range rangeData_Left = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "left")];
-            rangeData_ElapsedTime.Value2 = emotion.Left;
+            Microsoft.Office.Interop.Excel.Range rangeData_Left = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "left") + 1];
+            rangeData_Left.Value2 = emotion.Left;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Left);
 
             // right
-            Microsoft.Office.Interop.Excel.Range rangeData_Right = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "right")];
-            rangeData_ElapsedTime.Value2 = emotion.Right;
+            Microsoft.Office.Interop.Excel.Range rangeData_Right = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "right") + 1];
+            rangeData_Right.Value2 = emotion.Right;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Right);
 
             // top
-            Microsoft.Office.Interop.Excel.Range rangeData_Top = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "top")];
-            rangeData_ElapsedTime.Value2 = emotion.Top;
+            Microsoft.Office.Interop.Excel.Range rangeData_Top = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "top") + 1];
+            rangeData_Top.Value2 = emotion.Top;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Top);
 
             // bottom
-            Microsoft.Office.Interop.Excel.Range rangeData_Bottom = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "bottom")];
-            rangeData_ElapsedTime.Value2 = emotion.Bottom;
+            Microsoft.Office.Interop.Excel.Range rangeData_Bottom = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "bottom") + 1];
+            rangeData_Bottom.Value2 = emotion.Bottom;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_Bottom);
 
             // srcPath
-            Microsoft.Office.Interop.Excel.Range rangeData_SrcPath = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "src_path")];
-            rangeData_ElapsedTime.Value2 = emotion.SrcPath;
+            Microsoft.Office.Interop.Excel.Range rangeData_SrcPath = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "src_path") + 1];
+            rangeData_SrcPath.Value2 = emotion.SrcPath;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_SrcPath);
 
             // respath
-            Microsoft.Office.Interop.Excel.Range rangeData_ResPath = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "respath")];
-            rangeData_ElapsedTime.Value2 = emotion.ResPath;
+            Microsoft.Office.Interop.Excel.Range rangeData_ResPath = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "respath") + 1];
+            rangeData_ResPath.Value2 = emotion.ResPath;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_ResPath);
 
             // ok_fl
-            Microsoft.Office.Interop.Excel.Range rangeData_OK_FL = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "ok_fl")];
-            rangeData_ElapsedTime.Value2 = emotion.OK_Flg;
+            Microsoft.Office.Interop.Excel.Range rangeData_OK_FL = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "ok_fl") + 1];
+            rangeData_OK_FL.Value2 = emotion.OK_Flg;
+            // 都度解放
+            Marshal.ReleaseComObject(rangeData_OK_FL);
         }
 
         /// <summary>
@@ -568,7 +653,7 @@ namespace openCVShrap_1
         private void UpdateEmotionDTO(DateTime currentTime, string srcPath, string resPath)
         {
             // ②-1 開始時刻
-            LocalEmotionDTO.StartTime = currentTime.ToString("yyyymmddhhMMss");
+            LocalEmotionDTO.StartTime = currentTime.ToString("yyyyMMddHHmmss");
 
             // ②-2 経過時間
             DateTime endTime = DateTime.Now;
@@ -585,8 +670,14 @@ namespace openCVShrap_1
             // ②-5 OK・NGフラグ
             LocalEmotionDTO.OK_Flg = this.myEmotion;
 
+            // IDをインクリメントしておく
+            LocalEmotionDTO.Id = id;
+            id++;
 
-            
+
+
+
+
         }
     }
 }
