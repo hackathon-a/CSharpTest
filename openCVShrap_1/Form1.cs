@@ -44,6 +44,30 @@ namespace openCVShrap_1
         // 感情記録時のユーザ判定
         private int myEmotion = (int)EmotionState.Recording_NotReady;
 
+        // Excel出力時の1行目に表示する固定文字列
+        string[] ColumnNames = {
+                                "out_id",
+                                "time",
+                                "elapsed",
+                                "anger",
+                                "contempt",
+                                "disgust",
+                                "fear",
+                                "happiness",
+                                "neutral",
+                                "sadness",
+                                "surprise",
+                                "danger",
+                                "left",
+                                "right",
+                                "top",
+                                "bottom",
+                                "src_path",
+                                "respath",
+                                "ok_fl"
+                                };
+
+
         public Form1()
         {
             InitializeComponent();
@@ -52,6 +76,8 @@ namespace openCVShrap_1
                 System.Reflection.Assembly.GetExecutingAssembly();
 
             this.pictureBox2.Image = openCVShrap_1.Properties.Resources.computer11_sleep;
+
+
 
         }
 
@@ -221,12 +247,9 @@ namespace openCVShrap_1
                          // 初回実行時点のtickカウントを0で初期化
                          DateTime firstTime = DateTime.Now;
                          DateTime beforeTime = firstTime;
-                         DateTime nextFireTime = beforeTime;
-                         
-                         // 次回発火時刻は4秒後
-                         nextFireTime.AddSeconds(4.0);
 
-                         
+                         // 次回発火時刻は4秒後
+                         DateTime nextFireTime = beforeTime.AddSeconds(4.0);
 
                          // ダンプ先が無ければ作る
                          if (!System.IO.Directory.Exists(nowTime))
@@ -336,8 +359,7 @@ namespace openCVShrap_1
             beforeTime = currentTime;
 
             // 次回発火時刻を再計算
-            nextFireTime = beforeTime;
-            nextFireTime.AddSeconds(4.0);
+            nextFireTime = beforeTime.AddSeconds(4.0);
         }
 
         private void Button1_Click(object sender, EventArgs e)
@@ -383,7 +405,12 @@ namespace openCVShrap_1
 
             // 一度押されたらNGボタンと排他制御する
             this.button3.Enabled = false;
+            // 色も変える
+            this.button3.BackColor = Color.Gray;
+
             this.button4.Enabled = true;
+            // 色も変える
+            this.button4.BackColor = Color.Red;
         }
 
         private void button4_Click(object sender, EventArgs e)
@@ -393,7 +420,11 @@ namespace openCVShrap_1
 
             // OKボタンと排他する
             this.button4.Enabled = false;
+            // 色も変える
+            this.button4.BackColor = Color.Gray;
+
             this.button3.Enabled = true;
+            this.button3.BackColor = Color.Blue;
         }
 
 
@@ -412,6 +443,25 @@ namespace openCVShrap_1
             {
                 // ■TODO：ここで引数のデータをExcelに書き込む
 
+                // まずは1行目にカラム名に相当する文字列を出力
+                int columnIndex = 1;
+                foreach(string columnName in ColumnNames)
+                {
+                    Microsoft.Office.Interop.Excel.Range range = ws1.Cells[1, columnIndex];
+                    range.Value2 = columnName;
+                    columnIndex++;
+                }
+
+                // 次に集めたデータを繰り返し出力する
+                // 1行目はカラム表示行なのでデータは2行目から
+                int rowIndex = 2;
+                foreach (EmotionDTO emotion in emotionDTOList)
+                {
+                    UpdateWorkSheetRow(emotion, ws1, rowIndex);
+                    rowIndex++;
+                }
+
+
                 // ファイル保存
                 wb.SaveAs(outputFileName);
                 wb.Close(false);
@@ -423,6 +473,92 @@ namespace openCVShrap_1
                 Marshal.ReleaseComObject(wb);
                 Marshal.ReleaseComObject(ExcelApp);
             }
+        }
+
+        /// <summary>
+        /// EmotionDTOの内容をExcel出力用WorkSheetに書き込む
+        /// </summary>
+        /// <param name="emotion"></param>
+        /// <param name="ws1"></param>
+        /// <param name="rowIndex"></param>
+        private void UpdateWorkSheetRow(EmotionDTO emotion, Worksheet ws1, int rowIndex)
+        {
+            // ID
+            Microsoft.Office.Interop.Excel.Range rangeData_ID = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "out_id")];
+            rangeData_ID.Value2 = emotion.Id;
+
+            // startTime
+            Microsoft.Office.Interop.Excel.Range rangeData_StartTime = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "time")];
+            rangeData_StartTime.Value2 = emotion.StartTime;
+
+            // elapsedTime
+            Microsoft.Office.Interop.Excel.Range rangeData_ElapsedTime = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "elapsed")];
+            rangeData_ElapsedTime.Value2 = emotion.ElapsedTime;
+
+            // Anger
+            Microsoft.Office.Interop.Excel.Range rangeData_Anger = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "anger")];
+            rangeData_ElapsedTime.Value2 = emotion.Anger;
+
+            // contempt
+            Microsoft.Office.Interop.Excel.Range rangeData_Contempt = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "comtempt")];
+            rangeData_ElapsedTime.Value2 = emotion.Contempt;
+
+            // disgust
+            Microsoft.Office.Interop.Excel.Range rangeData_Disgust = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "disgust")];
+            rangeData_ElapsedTime.Value2 = emotion.Disgust;
+
+            // fear
+            Microsoft.Office.Interop.Excel.Range rangeData_fear = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "fear")];
+            rangeData_ElapsedTime.Value2 = emotion.Fear;
+
+            // happiness
+            Microsoft.Office.Interop.Excel.Range rangeData_Happiness = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "happiness")];
+            rangeData_ElapsedTime.Value2 = emotion.Happiness;
+
+            // neutral
+            Microsoft.Office.Interop.Excel.Range rangeData_Neutral = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "neutral")];
+            rangeData_ElapsedTime.Value2 = emotion.Neutral;
+
+
+            // sadness
+            Microsoft.Office.Interop.Excel.Range rangeData_Sadness = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "sadness")];
+            rangeData_ElapsedTime.Value2 = emotion.Sadness;
+
+            // surprize
+            Microsoft.Office.Interop.Excel.Range rangeData_Surprise = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "surprise")];
+            rangeData_ElapsedTime.Value2 = emotion.Surprise;
+
+            // danger
+            Microsoft.Office.Interop.Excel.Range rangeData_Danger = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "danger")];
+            rangeData_ElapsedTime.Value2 = emotion.Danger;
+
+            // left
+            Microsoft.Office.Interop.Excel.Range rangeData_Left = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "left")];
+            rangeData_ElapsedTime.Value2 = emotion.Left;
+
+            // right
+            Microsoft.Office.Interop.Excel.Range rangeData_Right = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "right")];
+            rangeData_ElapsedTime.Value2 = emotion.Right;
+
+            // top
+            Microsoft.Office.Interop.Excel.Range rangeData_Top = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "top")];
+            rangeData_ElapsedTime.Value2 = emotion.Top;
+
+            // bottom
+            Microsoft.Office.Interop.Excel.Range rangeData_Bottom = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "bottom")];
+            rangeData_ElapsedTime.Value2 = emotion.Bottom;
+
+            // srcPath
+            Microsoft.Office.Interop.Excel.Range rangeData_SrcPath = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "src_path")];
+            rangeData_ElapsedTime.Value2 = emotion.SrcPath;
+
+            // respath
+            Microsoft.Office.Interop.Excel.Range rangeData_ResPath = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "respath")];
+            rangeData_ElapsedTime.Value2 = emotion.ResPath;
+
+            // ok_fl
+            Microsoft.Office.Interop.Excel.Range rangeData_OK_FL = ws1.Cells[rowIndex, Array.IndexOf(ColumnNames, "ok_fl")];
+            rangeData_ElapsedTime.Value2 = emotion.OK_Flg;
         }
 
         /// <summary>
