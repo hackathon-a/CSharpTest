@@ -255,8 +255,12 @@ namespace openCVShrap_1
                          DateTime firstTime = DateTime.Now;
                          DateTime beforeTime = firstTime;
 
-                         // 次回発火時刻は4秒後
-                         DateTime nextFireTime = beforeTime.AddSeconds(4.0);
+                         // 次回発火時刻はテキストボックス入力値
+                         int iNextFired = 1;
+                         int.TryParse(this.textBox2.Text, out iNextFired);
+                         if (iNextFired < 1)
+                             iNextFired = 1;
+                         DateTime nextFireTime = beforeTime.AddSeconds(iNextFired);
 
                          // ダンプ先が無ければ作る
                          if (!System.IO.Directory.Exists(nowTime))
@@ -366,8 +370,14 @@ namespace openCVShrap_1
             // 現在時刻を前回実行時刻として覚えなおす
             beforeTime = currentTime;
 
+            int iNextFired = 1;
+            int.TryParse(this.textBox2.Text, out iNextFired);
+            // 1未満なら補正
+            if (iNextFired < 1)
+                iNextFired = 1;
+
             // 次回発火時刻を再計算
-            nextFireTime = beforeTime.AddSeconds(4.0);
+            nextFireTime = beforeTime.AddSeconds(iNextFired);
         }
 
         private void Button1_Click(object sender, EventArgs e)
@@ -677,6 +687,11 @@ namespace openCVShrap_1
 
 
 
+
+        }
+
+        private void textBox2_TextChanged(object sender, EventArgs e)
+        {
 
         }
     }
